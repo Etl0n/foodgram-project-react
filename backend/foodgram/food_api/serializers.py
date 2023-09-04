@@ -5,7 +5,6 @@ from .models import Recipe
 
 class RecipeSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField(read_only=True)
-    phot
 
     class Meta:
         model = Recipe
