@@ -25,8 +25,31 @@ class Recipe(models.Model):
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='recipes'
     )
-    image = models.ImageField(upload_to='photo_recipe/')
-    ingredients = models.ManyToManyField(Ingredient)
-    tags = models.ManyToManyField(Tag)
+    image = models.ImageField(upload_to='photo_recipe/', blank=True, null=True)
+    ingredients = models.ManyToManyField(
+        Ingredient, through='RecipeIngredient', related_name='ingredient'
+    )
+    tags = models.ManyToManyField(
+        Tag, through='RecipeTag', related_name='recipe'
+    )
     text = models.TextField()
     cooking_time = models.IntegerField()
+
+
+class RecipeTag(models.Model):
+    recipe = models.ForeignKey(
+        Recipe, on_delete=models.CASCADE, related_name='recipe_tag_used'
+    )
+    tag = models.ForeignKey(
+        Tag, on_delete=models.CASCADE, related_name='tag_used'
+    )
+
+
+class RecipeIngredient(models.Model):
+    recipe = models.ForeignKey(
+        Recipe, on_delete=models.CASCADE, related_name='recipe_ingredient_used'
+    )
+    ingredient = models.ForeignKey(
+        Ingredient, on_delete=models.CASCADE, related_name='ingredient_used'
+    )
+    amount = models.IntegerField()
