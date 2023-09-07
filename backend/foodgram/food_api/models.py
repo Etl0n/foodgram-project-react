@@ -9,7 +9,7 @@ User = get_user_model()
 class Ingredient(models.Model):
     name = models.CharField(max_length=40)
     col = models.FloatField()
-    unit_of_measurement = models.CharField(
+    measurement_unit = models.CharField(
         max_length=2, choices=UNIT_OF_MEASUREMENT
     )
 

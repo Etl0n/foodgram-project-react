@@ -6,7 +6,17 @@ from .models import Ingredient, Recipe, RecipeIngredient, RecipeTag, Tag
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
-        fields = ('id', 'name', 'colour', 'slug')
+        fields = (
+            'id',
+            'name',
+            'colour',
+            'slug',
+        )
+        read_only_fields = (
+            'name',
+            'colour',
+            'slug',
+        )
 
 
 class IngredientReadSerializer(serializers.ModelSerializer):
@@ -16,7 +26,9 @@ class IngredientReadSerializer(serializers.ModelSerializer):
 
 
 class IngredientSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(source='ingredient.id', read_only=True)
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=Ingredient.objects.all(), source='ingredient'
+    )
     name = serializers.CharField(source='ingredient.name', read_only=True)
     measurement_unit = serializers.CharField(
         source='ingredient.measurement_unit', read_only=True
@@ -30,7 +42,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 class RecipeSerializer(serializers.ModelSerializer):
     '''author = serializers.StringRelatedField(read_only=True)'''
 
-    tags = TagSerializer(many=True, required=True)
+    tags = TagSerializer(many=True, source='recipe_tag_used', required=True)
     ingredients = IngredientSerializer(
         many=True, source='recipe_ingredient_used', required=True
     )
@@ -50,16 +62,34 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     def create(self, validate_date):
         tags = validate_date.pop('tags')
-        ingredients = validate_date.pop('ingredients')
+        ingredients = validate_date.pop('recipe_ingredient_used')
         recipe = Recipe.objects.create(**validate_date)
         for ingredient in ingredients:
-            current_ingredient, status = Ingredient.objects.get_or_create(
-                **ingredient
-            )
-            RecipeIngredient.objects.create(
-                ingredient=current_ingredient, recipe=recipe
+            current_ingredient = ingredient.get('ingredient')
+            recipe.ingredients.add(
+                current_ingredient,
+                through_defaults={'amount': ingredient.get('amount')},
             )
         for tag in tags:
-            current_tag, status = Tag.objects.get_or_create(**tag)
-            RecipeTag.objects.create(tag=current_tag, recipe=recipe)
+            RecipeTag.objects.create(tag=tag, recipe=recipe)
         return recipe
+
+
+class RecipeReadSerializer(serializers.ModelSerializer):
+    tags = TagSerializer(many=True, required=True)
+    ingredients = IngredientSerializer(
+        many=True, source='recipe_ingredient_used', required=True
+    )
+
+    class Meta:
+        model = Recipe
+        fields = (
+            'id',
+            'tags',
+            'author',
+            'ingredients',
+            'name',
+            'image',
+            'text',
+            'cooking_time',
+        )
