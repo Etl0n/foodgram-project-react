@@ -1,6 +1,40 @@
+from django.contrib.auth import get_user_model
+from recipe.models import Ingredient, Recipe, RecipeIngredient, RecipeTag, Tag
 from rest_framework import serializers
 
-from .models import Ingredient, Recipe, RecipeIngredient, RecipeTag, Tag
+User = get_user_model()
+
+
+class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(max_length=150, write_only=True)
+    first_name = serializers.CharField(max_length=150, required=True)
+    last_name = serializers.CharField(max_length=150, required=True)
+    email = serializers.EmailField(
+        max_length=254,
+        required=True,
+    )
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+        )
+
+        return user
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "password",
+            "first_name",
+            "last_name",
+            "email",
+        )
 
 
 class TagSerializer(serializers.ModelSerializer):

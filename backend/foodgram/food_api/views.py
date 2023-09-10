@@ -1,7 +1,7 @@
+from recipe.models import Ingredient, Recipe, Tag
 from rest_framework import mixins
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from .models import Ingredient, Recipe, Tag
 from .serializers import (
     IngredientReadSerializer,
     RecipeReadSerializer,
