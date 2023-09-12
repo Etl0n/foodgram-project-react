@@ -37,6 +37,19 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
+class SetPasswordSerializer(serializers.ModelSerializer):
+    new_password = serializers.CharField(source='password', write_only=True)
+    current_password = serializers.CharField()
+
+    class Meta:
+        model = User
+        fields = ('new_password', 'current_password')
+
+    def create(self, validated_data):
+        validated_data.pop('current_password')
+        return super().create(validated_data)
+
+
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
