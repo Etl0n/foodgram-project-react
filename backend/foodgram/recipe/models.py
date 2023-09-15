@@ -53,3 +53,13 @@ class RecipeIngredient(models.Model):
         Ingredient, on_delete=models.CASCADE, related_name='ingredient_used'
     )
     amount = models.IntegerField()
+
+
+class FavoriteRecipe(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='favorite'
+    )
+    is_favorited = models.BooleanField()
+    recipe = models.ForeignKey(
+        Recipe, on_delete=models.CASCADE, related_name='favorite'
+    )

@@ -18,6 +18,6 @@ routerv1.register('tags', TagViewSet)
 routerv1.register('users', UserViewSet)
 urlpatterns = [
     path('', include(routerv1.urls)),
-    path('api/auth/token/login/', views.obtain_auth_token),
-    path('api/auth/token/logout/', delete_token),
+    path('auth/token/login/', views.obtain_auth_token),
+    path('auth/token/logout/', delete_token),
 ]
