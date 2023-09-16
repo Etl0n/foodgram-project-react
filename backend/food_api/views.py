@@ -3,12 +3,17 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
 from recipe.models import Ingredient, Recipe, Tag
 from rest_framework import mixins, status
+from rest_framework.authtoken import views as auth_views
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.compat import coreapi, coreschema
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import AllowAny
+from rest_framework.schemas import ManualSchema
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from .serializers import (
     IngredientReadSerializer,
+    MyAuthTokenSerializer,
     RecipeReadSerializer,
     RecipeSerializer,
     SetPasswordSerializer,
@@ -26,6 +31,37 @@ def delete_token(request):
     except (AttributeError, ObjectDoesNotExist):
         raise JsonResponse(data={}, status=status.HTTP_402_PAYMENT_REQUIRED)
     return JsonResponse(data={}, status=status.HTTP_204_NO_CONTENT)
+
+
+class MyAuthToken(auth_views.ObtainAuthToken):
+    serializer_class = MyAuthTokenSerializer
+    if coreapi is not None and coreschema is not None:
+        schema = ManualSchema(
+            fields=[
+                coreapi.Field(
+                    name="email",
+                    required=True,
+                    location='form',
+                    schema=coreschema.String(
+                        title="Email",
+                        description="Valid email for authentication",
+                    ),
+                ),
+                coreapi.Field(
+                    name="password",
+                    required=True,
+                    location='form',
+                    schema=coreschema.String(
+                        title="Password",
+                        description="Valid password for authentication",
+                    ),
+                ),
+            ],
+            encoding="application/json",
+        )
+
+
+obtain_auth_token = MyAuthToken.as_view()
 
 
 class UserViewSet(
