@@ -7,6 +7,7 @@ from .views import (
     TagViewSet,
     UserViewSet,
     delete_token,
+    favorite,
     obtain_auth_token,
 )
 
@@ -18,6 +19,7 @@ routerv1.register('tags', TagViewSet)
 routerv1.register('users', UserViewSet)
 urlpatterns = [
     path('', include(routerv1.urls)),
+    path(r'posts/(^?P<reicpe>[\d]+$)/favorite', favorite),
     path('auth/token/login/', obtain_auth_token),
     path('auth/token/logout/', delete_token),
 ]

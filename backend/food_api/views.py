@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
-from recipe.models import Ingredient, Recipe, Tag
+from recipe.models import FavoriteRecipe, Ingredient, Recipe, Tag
 from rest_framework import mixins, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -109,3 +109,17 @@ class TagViewSet(
 ):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+
+
+@api_view(['POST', 'DELETE'])
+def favorite(request):
+    if request.method == 'POST':
+        FavoriteRecipe.objects.create(
+            user=request.user, recipe=Recipe.objects.get(request.get('recipe'))
+        )
+        return Response('', status=status.HTTP_201_CREATED)
+    else:
+        FavoriteRecipe.objects.delete(
+            user=request.user, recipe=Recipe.objects.get(request.get('recipe'))
+        )
+        return Response('', status=status.HTTP_204_NO_CONTENT)
