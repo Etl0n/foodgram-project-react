@@ -1,5 +1,4 @@
 from django.urls import include, path
-from rest_framework.authtoken import views
 from rest_framework.routers import DefaultRouter
 
 from .views import (
@@ -8,6 +7,7 @@ from .views import (
     TagViewSet,
     UserViewSet,
     delete_token,
+    obtain_auth_token,
 )
 
 app_name = 'api'
@@ -18,6 +18,6 @@ routerv1.register('tags', TagViewSet)
 routerv1.register('users', UserViewSet)
 urlpatterns = [
     path('', include(routerv1.urls)),
-    path('auth/token/login/', views.obtain_auth_token),
+    path('auth/token/login/', obtain_auth_token),
     path('auth/token/logout/', delete_token),
 ]

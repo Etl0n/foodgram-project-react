@@ -2,7 +2,6 @@ import base64
 
 from django.contrib.auth import authenticate, get_user_model
 from django.core.files.base import ContentFile
-from django.utils.translation import gettext_lazy as _
 from recipe.models import (
     FavoriteRecipe,
     Ingredient,
@@ -57,36 +56,34 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-class MyAuthTokenSerializer(serializers.Serializer):
-    email = serializers.EmailField(label=_("Email"))
+class AuthTokenSerializer(serializers.Serializer):
+    email = serializers.EmailField(write_only=True)
     password = serializers.CharField(
-        label=_(
-            "Password",
-        ),
-        style={'input_type': 'password'},
-        trim_whitespace=False,
+        write_only=True, style={'input_type': 'password'}
     )
 
-    def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
+    def validate(self, data):
+        email = data.get('email')
+        password = data.get('password')
 
         if email and password:
-            user = authenticate(
-                request=self.context.get('request'),
-                email=email,
-                password=password,
-            )
-
-            if not user:
-                msg = _('Unable to log in with provided credentials.')
-                raise serializers.ValidationError(msg, code='authorization')
+            try:
+                authenticate(
+                    request=self.context.get('request'),
+                    email=email,
+                    password=password,
+                )
+                user_obj = User.objects.get(email=email)
+                if not user_obj.check_password(password):
+                    raise serializers.ValidationError("Incorrect credentials")
+                data['user'] = user_obj
+            except User.DoesNotExist:
+                raise serializers.ValidationError(
+                    "This email is not registered"
+                )
         else:
-            msg = _('Must include "email" and "password".')
-            raise serializers.ValidationError(msg, code='authorization')
-
-        attrs['user'] = user
-        return attrs
+            raise serializers.ValidationError("Missing credentials")
+        return data
 
 
 class SetPasswordSerializer(serializers.ModelSerializer):
@@ -139,13 +136,13 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    '''author = serializers.StringRelatedField(read_only=True)'''
-
+    author = serializers.StringRelatedField(read_only=True)
     image = Base64ImageField(required=False, allow_null=True)
     tags = TagSerializer(many=True, source='recipe_tag_used', required=True)
     ingredients = IngredientSerializer(
         many=True, source='recipe_ingredient_used', required=True
     )
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
@@ -159,6 +156,9 @@ class RecipeSerializer(serializers.ModelSerializer):
             'text',
             'cooking_time',
         )
+
+    def get_is_favorited(self, obj):
+        FavoriteRecipe.objects.get_or_create()
 
     def create(self, validate_date):
         tags = validate_date.pop('tags')
@@ -176,7 +176,9 @@ class RecipeSerializer(serializers.ModelSerializer):
 
 
 class RecipeReadSerializer(serializers.ModelSerializer):
-    tags = TagSerializer(many=True, required=True)
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(), many=True, required=True, source='id'
+    )
     ingredients = IngredientSerializer(
         many=True, source='recipe_ingredient_used', required=True
     )
