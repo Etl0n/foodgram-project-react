@@ -1,7 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
-from recipe.models import FavoriteRecipe, Ingredient, Recipe, Tag
+from recipe.models import (
+    FavoriteRecipe,
+    Ingredient,
+    Recipe,
+    SubscriptAuthor,
+    Tag,
+)
 from rest_framework import mixins, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -12,6 +18,7 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from .serializers import (
     AuthTokenSerializer,
+    CreateUserSerializer,
     IngredientReadSerializer,
     RecipeReadSerializer,
     RecipeSerializer,
@@ -40,11 +47,7 @@ class AuthLoginUser(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
-        return Response(
-            {
-                'token': token.key,
-            }
-        )
+        return Response({'auth_token': token.key})
 
 
 obtain_auth_token = AuthLoginUser.as_view()
@@ -78,6 +81,11 @@ class UserViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return CreateUserSerializer
+        return UserSerializer
+
     @action(detail=False)
     def me(self, request):
         self_user = request.user
@@ -102,6 +110,7 @@ class IngredienViewSet(
 ):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientReadSerializer
+    permission_classes = (AllowAny,)
 
 
 class TagViewSet(
@@ -109,6 +118,8 @@ class TagViewSet(
 ):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    permission_classes = (AllowAny,)
+    pagination_class = None
 
 
 @api_view(['POST', 'DELETE'])
@@ -123,3 +134,25 @@ def favorite(request):
             user=request.user, recipe=Recipe.objects.get(request.get('recipe'))
         )
         return Response('', status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST', 'DELETE'])
+def subscribe(request, author_id):
+    try:
+        author = User.objects.get(id=author_id)
+    except ValueError:
+        raise ValueError()
+    if request.method == 'POST':
+        SubscriptAuthor.objects.create(user=request.user, author=author)
+        context = {'request': request}
+        serializer = UserSerializer(author, context=context)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        object = SubscriptAuthor.objects.filter(
+            user=request.user, author=author
+        )
+        if object.exists():
+            object.delete()
+            return Response('', status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response('', status=status.HTTP_400_BAD_REQUEST)

@@ -1,16 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
-UNIT_OF_MEASUREMENT = [('кг', 'киллограмм'), ('г', 'грамм')]
-
 User = get_user_model()
 
 
 class Ingredient(models.Model):
-    name = models.CharField(max_length=40)
-    measurement_unit = models.CharField(
-        max_length=2, choices=UNIT_OF_MEASUREMENT
-    )
+    name = models.CharField(max_length=270)
+    measurement_unit = models.CharField(max_length=270)
 
 
 class Tag(models.Model):
@@ -28,7 +24,7 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         Ingredient, through='RecipeIngredient', related_name='ingredient'
     )
-    tags = models.ManyToManyField(Tag, through='RecipeTag')
+    tags = models.ManyToManyField(Tag, related_name='recipe')
     text = models.TextField()
     cooking_time = models.IntegerField()
 
@@ -43,20 +39,19 @@ class RecipeIngredient(models.Model):
     amount = models.IntegerField()
 
 
-class RecipeTag(models.Model):
-    recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE, related_name='recipe_tag_used'
-    )
-    tag = models.ForeignKey(
-        Tag, on_delete=models.CASCADE, related_name='tag_used'
-    )
-
-
 class FavoriteRecipe(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='favorite'
     )
-    is_favorited = models.BooleanField(default=True)
     recipe = models.ForeignKey(
         Recipe, on_delete=models.CASCADE, related_name='favorite'
+    )
+
+
+class SubscriptAuthor(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='sub_on_author'
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='sub_author'
     )

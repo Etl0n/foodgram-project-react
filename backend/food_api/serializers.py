@@ -7,10 +7,11 @@ from recipe.models import (
     Ingredient,
     Recipe,
     RecipeIngredient,
-    RecipeTag,
+    SubscriptAuthor,
     Tag,
 )
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 User = get_user_model()
 
@@ -24,13 +25,19 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
-class UserSerializer(serializers.ModelSerializer):
+class CreateUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=150, write_only=True)
     first_name = serializers.CharField(max_length=150, required=True)
     last_name = serializers.CharField(max_length=150, required=True)
     email = serializers.EmailField(
         max_length=254,
         required=True,
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message='A user with that email already exists.',
+            )
+        ],
     )
 
     def create(self, validated_data):
@@ -54,6 +61,30 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
         )
+
+
+class UserSerializer(CreateUserSerializer):
+    is_subscribed = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "password",
+            "first_name",
+            "last_name",
+            'is_subscribed',
+            "email",
+        )
+
+    def get_is_subscribed(self, obj):
+        if SubscriptAuthor.objects.filter(
+            user=self.context.get('request').user,
+            author=obj,
+        ).exists():
+            return True
+        return False
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -100,6 +131,8 @@ class SetPasswordSerializer(serializers.ModelSerializer):
 
 
 class TagSerializer(serializers.ModelSerializer):
+    id = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all())
+
     class Meta:
         model = Tag
         fields = (
@@ -108,7 +141,11 @@ class TagSerializer(serializers.ModelSerializer):
             'colour',
             'slug',
         )
-        read_only_fields = ('slug',)
+        read_only_fields = (
+            'name',
+            'slug',
+            'colour',
+        )
 
 
 class IngredientReadSerializer(serializers.ModelSerializer):
@@ -132,11 +169,12 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeReadSerializer(serializers.ModelSerializer):
-    tags = TagSerializer(many=True, source='recipe_tag_used', required=True)
+    tags = TagSerializer(many=True, read_only=True)
     ingredients = IngredientSerializer(
-        many=True, source='recipe_ingredient_used', required=True
+        many=True, source='recipe_ingredient_used', read_only=True
     )
     is_favorited = serializers.SerializerMethodField(read_only=True)
+    author = UserSerializer(read_only=True)
 
     class Meta:
         model = Recipe
@@ -153,10 +191,11 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         )
 
     def get_is_favorited(self, obj):
-        favorite, status = FavoriteRecipe.objects.get_or_create(
+        if FavoriteRecipe.objects.filter(
             user=self.context.get('request').user, recipe=obj
-        )
-        return favorite.is_favorited
+        ).exists():
+            return True
+        return False
 
 
 class RecipeSerializer(serializers.ModelSerializer):
@@ -199,6 +238,5 @@ class RecipeSerializer(serializers.ModelSerializer):
         return recipe
 
     def to_representation(self, instance):
-        request = self.context.get('request')
-        context = {'request': request}
+        context = {'request': self.context.get('request')}
         return RecipeReadSerializer(instance, context=context).data
