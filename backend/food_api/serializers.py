@@ -175,6 +175,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     )
     is_favorited = serializers.SerializerMethodField(read_only=True)
     author = UserSerializer(read_only=True)
+    is_in_shopping_cart = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Recipe
@@ -187,6 +188,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
             'image',
             'text',
             'cooking_time',
+            'is_in_shopping_cart',
             'is_favorited',
         )
 
@@ -195,10 +197,18 @@ class RecipeReadSerializer(serializers.ModelSerializer):
             user=self.context.get('request').user, recipe=obj
         ).exists():
             return True
+        if self.context.get('request').method == 'POST':
+            FavoriteRecipe.objects.create(
+                user=self.context.get('request').user, recipe=obj
+            )
+            return True
         return False
 
+    def get_is_in_shopping_cart(self, obj):
+        return True
 
-class RecipeSerializer(serializers.ModelSerializer):
+
+class RecipeCreateSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     image = Base64ImageField(required=False, allow_null=True)
     tags = serializers.PrimaryKeyRelatedField(
@@ -209,6 +219,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientSerializer(
         many=True, source='recipe_ingredient_used', required=True
     )
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
@@ -220,6 +231,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             'name',
             'image',
             'text',
+            'is_favorited',
             'cooking_time',
         )
 
@@ -240,3 +252,9 @@ class RecipeSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         context = {'request': self.context.get('request')}
         return RecipeReadSerializer(instance, context=context).data
+
+    def get_is_favorited(self, obj):
+        FavoriteRecipe.objects.create(
+            user=self.context.get('request').user, recipe=obj
+        )
+        return 'true'

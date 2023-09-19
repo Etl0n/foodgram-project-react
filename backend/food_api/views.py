@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import JsonResponse
 from recipe.models import (
     FavoriteRecipe,
     Ingredient,
@@ -20,8 +19,8 @@ from .serializers import (
     AuthTokenSerializer,
     CreateUserSerializer,
     IngredientReadSerializer,
+    RecipeCreateSerializer,
     RecipeReadSerializer,
-    RecipeSerializer,
     SetPasswordSerializer,
     TagSerializer,
     UserSerializer,
@@ -35,8 +34,8 @@ def delete_token(request):
     try:
         request.user.auth_token.delete()
     except (AttributeError, ObjectDoesNotExist):
-        raise JsonResponse(data={}, status=status.HTTP_402_PAYMENT_REQUIRED)
-    return JsonResponse(data={}, status=status.HTTP_204_NO_CONTENT)
+        raise Response(data={}, status=status.HTTP_402_PAYMENT_REQUIRED)
+    return Response(data={}, status=status.HTTP_204_NO_CONTENT)
 
 
 class AuthLoginUser(ObtainAuthToken):
@@ -65,21 +64,22 @@ class UserViewSet(
 
     @action(detail=False, methods=['post'])
     def set_password(self, request):
-        serializer = SetPasswordSerializer(request.user, data=request.data)
+        user = request.user
+        serializer = SetPasswordSerializer(user, data=request.data)
         if serializer.is_valid():
-            if serializer.validated_data.get(
-                'password'
-            ) == serializer.validated_data.get('current_password'):
-                request.user.set_password(
+            password = serializer.validated_data.get("current_password")
+            if user.check_password(password):
+                user.set_password(
                     serializer.validated_data.get("new_password")
                 )
-                request.user.save()
-                return JsonResponse(data={}, status=status.HTTP_204_NO_CONTENT)
+                user.save()
+                return Response(data={}, status=status.HTTP_204_NO_CONTENT)
         else:
-            return JsonResponse(
+            return Response(
                 data={"field_name": ["Обязательное поле."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -90,7 +90,7 @@ class UserViewSet(
     def me(self, request):
         self_user = request.user
         serializer = self.get_serializer(self_user)
-        return JsonResponse(data=serializer.data, status=status.HTTP_200_OK)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
 
 
 class RecipeViewSet(ModelViewSet):
@@ -99,7 +99,7 @@ class RecipeViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return RecipeReadSerializer
-        return RecipeSerializer
+        return RecipeCreateSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
