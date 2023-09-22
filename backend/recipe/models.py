@@ -16,7 +16,7 @@ class Tag(models.Model):
 
 
 class Recipe(models.Model):
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='recipes'
     )
@@ -38,6 +38,14 @@ class RecipeIngredient(models.Model):
     )
     amount = models.IntegerField()
 
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('recipe', 'ingredient'),
+                name='uniqe_ingredient_in_recipe',
+            ),
+        )
+
 
 class FavoriteRecipe(models.Model):
     user = models.ForeignKey(
@@ -47,6 +55,13 @@ class FavoriteRecipe(models.Model):
         Recipe, on_delete=models.CASCADE, related_name='favorite'
     )
 
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'recipe'), name='uniqe_recipe_of_user'
+            ),
+        )
+
 
 class SubscriptAuthor(models.Model):
     user = models.ForeignKey(
@@ -55,3 +70,10 @@ class SubscriptAuthor(models.Model):
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='sub_author'
     )
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'author'), name='uniqe_subscript'
+            ),
+        )

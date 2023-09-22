@@ -7,7 +7,7 @@ from recipe.models import (
     SubscriptAuthor,
     Tag,
 )
-from rest_framework import mixins, status
+from rest_framework import filters, mixins, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view
@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
+from .permisions import OwnerOrReadOnly
 from .serializers import (
     AuthTokenSerializer,
     CreateUserSerializer,
@@ -22,6 +23,8 @@ from .serializers import (
     RecipeCreateSerializer,
     RecipeReadSerializer,
     SetPasswordSerializer,
+    ShortInfoRecipeSerializer,
+    SubsciptionsSerializer,
     TagSerializer,
     UserSerializer,
 )
@@ -86,6 +89,14 @@ class UserViewSet(
             return CreateUserSerializer
         return UserSerializer
 
+    def get_queryset(self):
+        if self.action == 'list':
+            limit = self.request.GET.get('limit')
+            if limit is None:
+                return super().get_queryset()
+            self.paginator.page_size = int(self.request.GET.get('limit'))
+        return super().get_queryset()
+
     @action(detail=False)
     def me(self, request):
         self_user = request.user
@@ -95,6 +106,7 @@ class UserViewSet(
 
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
+    permission_classes = (OwnerOrReadOnly,)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -110,6 +122,9 @@ class IngredienViewSet(
 ):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientReadSerializer
+    pagination_class = None
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
     permission_classes = (AllowAny,)
 
 
@@ -123,16 +138,24 @@ class TagViewSet(
 
 
 @api_view(['POST', 'DELETE'])
-def favorite(request):
+def favorite(request, recipe_id):
+    # recipe_id = kwargs['recipe_id']
+    try:
+        recipe = Recipe.objects.get(id=recipe_id)
+    except ValueError:
+        raise ValueError()
     if request.method == 'POST':
-        FavoriteRecipe.objects.create(
-            user=request.user, recipe=Recipe.objects.get(request.get('recipe'))
-        )
-        return Response('', status=status.HTTP_201_CREATED)
+        FavoriteRecipe.objects.create(user=request.user, recipe=recipe)
+        serializer = ShortInfoRecipeSerializer(recipe)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
-        FavoriteRecipe.objects.delete(
-            user=request.user, recipe=Recipe.objects.get(request.get('recipe'))
-        )
+        try:
+            favorite = FavoriteRecipe.objects.get(
+                user=request.user, recipe=recipe
+            )
+        except ValueError:
+            return Response('', status=status.HTTP_400_BAD_REQUEST)
+        favorite.delete()
         return Response('', status=status.HTTP_204_NO_CONTENT)
 
 
@@ -145,7 +168,7 @@ def subscribe(request, author_id):
     if request.method == 'POST':
         SubscriptAuthor.objects.create(user=request.user, author=author)
         context = {'request': request}
-        serializer = UserSerializer(author, context=context)
+        serializer = SubsciptionsSerializer(author, context=context)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         object = SubscriptAuthor.objects.filter(
@@ -156,3 +179,15 @@ def subscribe(request, author_id):
             return Response('', status=status.HTTP_204_NO_CONTENT)
         else:
             return Response('', status=status.HTTP_400_BAD_REQUEST)
+
+
+class Subscriptions(mixins.ListModelMixin, GenericViewSet):
+    serializer_class = SubsciptionsSerializer
+
+    def get_queryset(self):
+        queryset = SubscriptAuthor.objects.filter(user=self.request.user)
+        limit = self.request.GET.get('limit')
+        if limit is None:
+            return queryset
+        self.paginator.page_size = int(self.request.GET.get('limit'))
+        return queryset

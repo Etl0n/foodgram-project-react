@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     IngredienViewSet,
     RecipeViewSet,
+    Subscriptions,
     TagViewSet,
     UserViewSet,
     delete_token,
@@ -20,8 +21,9 @@ routerv1.register('tags', TagViewSet)
 routerv1.register('users', UserViewSet)
 urlpatterns = [
     path('', include(routerv1.urls)),
-    re_path(r'^posts/(?P<reicpe>[\d]+)/favorite/$', favorite),
-    re_path(r'^users/(?P<author_id>[\d]+)/subscribe/$', subscribe),
+    path('users/subscriptions/', Subscriptions.as_view({'get': 'list'})),
+    re_path(r'recipes/(?P<recipe_id>[\d]+)/favorite/', favorite),
+    re_path(r'users/(?P<author_id>[\d]+)/subscribe/', subscribe),
     path('auth/token/login/', obtain_auth_token),
     path('auth/token/logout/', delete_token),
 ]

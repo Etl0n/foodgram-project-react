@@ -39,6 +39,15 @@ class CreateUserSerializer(serializers.ModelSerializer):
             )
         ],
     )
+    username = serializers.CharField(
+        max_length=150,
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message='A user with that username already exists.',
+            )
+        ],
+    )
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -71,7 +80,6 @@ class UserSerializer(CreateUserSerializer):
         fields = (
             "id",
             "username",
-            "password",
             "first_name",
             "last_name",
             'is_subscribed',
@@ -79,12 +87,15 @@ class UserSerializer(CreateUserSerializer):
         )
 
     def get_is_subscribed(self, obj):
-        if SubscriptAuthor.objects.filter(
-            user=self.context.get('request').user,
-            author=obj,
-        ).exists():
-            return True
-        return False
+        try:
+            if SubscriptAuthor.objects.filter(
+                user=self.context.get('request').user,
+                author=obj,
+            ).exists():
+                return True
+            return False
+        except TypeError:
+            return False
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -210,7 +221,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
-    image = Base64ImageField(required=False, allow_null=True)
+    image = Base64ImageField(required=True, allow_null=True)
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(),
         many=True,
@@ -249,6 +260,45 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             recipe.tags.add(tag)
         return recipe
 
+    def update(self, instance, validate_date):
+        instance.image = validate_date.get('image', instance.image)
+        instance.name = validate_date.get('name', instance.name)
+        instance.text = validate_date.get('text', instance.text)
+        instance.cooking_time = validate_date.get(
+            'cooking_time', instance.cooking_time
+        )
+        if 'recipe_ingredient_used' in validate_date:
+            ingredients = validate_date.pop('recipe_ingredient_used')
+            del_recipe = RecipeIngredient.objects.filter(recipe=instance)
+            del_recipe.delete()
+            lst = []
+            for ingredient in ingredients:
+                (
+                    current_ingredient,
+                    status,
+                ) = RecipeIngredient.objects.get_or_create(
+                    recipe=instance,
+                    ingredient=ingredient.get('ingredient'),
+                    amount=ingredient.get('amount'),
+                )
+                lst.append(current_ingredient)
+            instance.recipe_ingredient_used.set(lst)
+        lst = []
+        if 'tags' in validate_date:
+            tags = validate_date.pop('tags')
+            for tag in tags:
+                (
+                    current_tag,
+                    status,
+                ) = Tag.objects.get_or_create(
+                    recipe=instance,
+                    id=tag.id,
+                )
+                lst.append(current_tag)
+            instance.tags.set(lst)
+        instance.save()
+        return instance
+
     def to_representation(self, instance):
         context = {'request': self.context.get('request')}
         return RecipeReadSerializer(instance, context=context).data
@@ -258,3 +308,30 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             user=self.context.get('request').user, recipe=obj
         )
         return 'true'
+
+
+class ShortInfoRecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class SubsciptionsSerializer(UserSerializer):
+    recipes = ShortInfoRecipeSerializer(many=True)
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            'is_subscribed',
+            "email",
+            "recipes",
+            "recipes_count",
+        )
+
+    def get_recipes_count(self, obj):
+        return self.instance.recipes.all().count()
