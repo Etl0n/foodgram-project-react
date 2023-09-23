@@ -15,13 +15,13 @@ from .views import (
 
 app_name = 'api'
 routerv1 = DefaultRouter()
-routerv1.register('recipes', RecipeViewSet)
+routerv1.register('recipes', RecipeViewSet, basename='recipes')
 routerv1.register('ingredients', IngredienViewSet)
 routerv1.register('tags', TagViewSet)
 routerv1.register('users', UserViewSet)
 urlpatterns = [
-    path('', include(routerv1.urls)),
     path('users/subscriptions/', Subscriptions.as_view({'get': 'list'})),
+    path('', include(routerv1.urls)),
     re_path(r'recipes/(?P<recipe_id>[\d]+)/favorite/', favorite),
     re_path(r'users/(?P<author_id>[\d]+)/subscribe/', subscribe),
     path('auth/token/login/', obtain_auth_token),

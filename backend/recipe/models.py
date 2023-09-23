@@ -52,7 +52,7 @@ class FavoriteRecipe(models.Model):
         User, on_delete=models.CASCADE, related_name='favorite'
     )
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE, related_name='favorite'
+        Recipe, on_delete=models.CASCADE, related_name='is_favorite'
     )
 
     class Meta:

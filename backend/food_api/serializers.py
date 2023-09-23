@@ -204,10 +204,13 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         )
 
     def get_is_favorited(self, obj):
-        if FavoriteRecipe.objects.filter(
-            user=self.context.get('request').user, recipe=obj
-        ).exists():
-            return True
+        try:
+            if FavoriteRecipe.objects.filter(
+                user=self.context.get('request').user, recipe=obj
+            ).exists():
+                return True
+        except TypeError:
+            return False
         if self.context.get('request').method == 'POST':
             FavoriteRecipe.objects.create(
                 user=self.context.get('request').user, recipe=obj
@@ -317,7 +320,7 @@ class ShortInfoRecipeSerializer(serializers.ModelSerializer):
 
 
 class SubsciptionsSerializer(UserSerializer):
-    recipes = ShortInfoRecipeSerializer(many=True)
+    recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -333,5 +336,13 @@ class SubsciptionsSerializer(UserSerializer):
             "recipes_count",
         )
 
+    def get_recipes(self, obj):
+        limit = self.context.get('request').GET.get('recipe_limit')
+        recipes = Recipe.objects.filter(author=obj)
+        if limit is not None:
+            recipes = recipes[: int(limit)]
+        serializer = ShortInfoRecipeSerializer(instance=recipes, many=True)
+        return serializer.data
+
     def get_recipes_count(self, obj):
-        return self.instance.recipes.all().count()
+        return obj.recipes.all().count()

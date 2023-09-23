@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from django_filters.rest_framework import DjangoFilterBackend
 from recipe.models import (
     FavoriteRecipe,
     Ingredient,
@@ -107,11 +108,25 @@ class UserViewSet(
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = (OwnerOrReadOnly,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = (
+        'author',
+        'is_favorited',
+        'tags',
+    )
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return RecipeReadSerializer
         return RecipeCreateSerializer
+
+    def get_queryset(self):
+        tag = self.request.query_params.get('tags')
+        if tag:
+            tag = Tag.objects.get(slug=tag)
+            queryset = tag.recipe.all()
+            return queryset
+        return super().get_queryset()
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -185,7 +200,11 @@ class Subscriptions(mixins.ListModelMixin, GenericViewSet):
     serializer_class = SubsciptionsSerializer
 
     def get_queryset(self):
-        queryset = SubscriptAuthor.objects.filter(user=self.request.user)
+        authors = SubscriptAuthor.objects.filter(user=self.request.user)
+        lst = []
+        for author in authors:
+            lst.append(author.author.username)
+        queryset = User.objects.filter(username__in=lst)
         limit = self.request.GET.get('limit')
         if limit is None:
             return queryset
