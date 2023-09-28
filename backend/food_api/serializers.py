@@ -7,6 +7,7 @@ from recipe.models import (
     Ingredient,
     Recipe,
     RecipeIngredient,
+    RecipeInShoppingCart,
     SubscriptAuthor,
     Tag,
 )
@@ -219,7 +220,19 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         return False
 
     def get_is_in_shopping_cart(self, obj):
-        return True
+        try:
+            if RecipeInShoppingCart.objects.filter(
+                user=self.context.get('request').user, recipe=obj
+            ).exists():
+                return True
+        except TypeError:
+            return False
+        if self.context.get('request').method == 'POST':
+            RecipeInShoppingCart.objects.create(
+                user=self.context.get('request').user, recipe=obj
+            )
+            return True
+        return False
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
@@ -337,7 +350,7 @@ class SubsciptionsSerializer(UserSerializer):
         )
 
     def get_recipes(self, obj):
-        limit = self.context.get('request').GET.get('recipe_limit')
+        limit = self.context.get('request').GET.get('recipes_limit')
         recipes = Recipe.objects.filter(author=obj)
         if limit is not None:
             recipes = recipes[: int(limit)]

@@ -32,6 +32,23 @@ class IngredientAdmin(admin.ModelAdmin):
 
 
 class RecipeAdmin(admin.ModelAdmin):
+    def tags(self, recipe):
+        tags = []
+        for tag in recipe.tags:
+            tags.append(tag)
+        return " ".join(tags)
+
+    tags.short_description = 'Tags of recipe'
+
+    def ingredients(self, recipe):
+        ingredients = []
+        for ingredient in recipe.ingredients:
+            ingredients.append(ingredient)
+        return " ".join(ingredients)
+
+    def add_is_favorited(self, recipe):
+        return recipe.is_favorite.all().count()
+
     list_display = (
         'id',
         'tags',
@@ -41,6 +58,7 @@ class RecipeAdmin(admin.ModelAdmin):
         'image',
         'text',
         'cooking_time',
+        'add_is_favorited',
     )
     list_filter = (
         'name',
@@ -61,8 +79,8 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = (
         'id',
-        'reicpe',
-        'author',
+        'recipe',
+        'user',
     )
 
 
@@ -89,10 +107,16 @@ class UserAdmin(admin.ModelAdmin):
     )
 
 
+class UserAdmin(admin.ModelAdmin):
+    list_display = ('email', 'first_name', 'last_name', 'password', 'username')
+    list_filter = ('email', 'username')
+
+
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
 admin.site.register(Recipe, RecipeAdmin)
 admin.site.register(Ingredient, IngredientAdmin)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(RecipeIngredient, RecipeIngredientAdmin)
 admin.site.register(FavoriteRecipe, FavoriteAdmin)
 admin.site.register(SubscriptAuthor, SubscriptAdmin)
-admin.site.register(User, UserAdmin)

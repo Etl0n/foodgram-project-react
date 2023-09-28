@@ -1,21 +1,25 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
-from django_filters.rest_framework import DjangoFilterBackend
+from django.http import FileResponse
+from django_filters.rest_framework import DjangoFilterBackend, OrderingFilter
 from recipe.models import (
     FavoriteRecipe,
     Ingredient,
     Recipe,
+    RecipeInShoppingCart,
     SubscriptAuthor,
     Tag,
 )
 from rest_framework import filters, mixins, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.decorators import action, api_view
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
+from .filter import RecipeFilter
 from .permisions import OwnerOrReadOnly
 from .serializers import (
     AuthTokenSerializer,
@@ -31,6 +35,24 @@ from .serializers import (
 )
 
 User = get_user_model()
+
+
+def view_for_shopp_and_favorite(models_obj, request, recipe_id):
+    try:
+        recipe = Recipe.objects.get(id=recipe_id)
+    except ValueError:
+        raise ValueError()
+    if request.method == 'POST':
+        models_obj.objects.create(user=request.user, recipe=recipe)
+        serializer = ShortInfoRecipeSerializer(recipe)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        try:
+            obj = models_obj.objects.get(user=request.user, recipe=recipe)
+        except ValueError:
+            return Response('', status=status.HTTP_400_BAD_REQUEST)
+        obj.delete()
+        return Response('', status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['POST'])
@@ -108,25 +130,14 @@ class UserViewSet(
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = (OwnerOrReadOnly,)
-    filter_backends = (DjangoFilterBackend,)
-    filterset_fields = (
-        'author',
-        'is_favorited',
-        'tags',
-    )
+    filter_backends = (DjangoFilterBackend, OrderingFilter)
+    filterset_class = RecipeFilter
+    ordering_fields = ('pub_day',)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return RecipeReadSerializer
         return RecipeCreateSerializer
-
-    def get_queryset(self):
-        tag = self.request.query_params.get('tags')
-        if tag:
-            tag = Tag.objects.get(slug=tag)
-            queryset = tag.recipe.all()
-            return queryset
-        return super().get_queryset()
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -152,9 +163,22 @@ class TagViewSet(
     pagination_class = None
 
 
+class Subscriptions(mixins.ListModelMixin, GenericViewSet):
+    serializer_class = SubsciptionsSerializer
+
+    def get_queryset(self):
+        authors = SubscriptAuthor.objects.filter(user=self.request.user)
+        lst = [author.author.username for author in authors]
+        queryset = User.objects.filter(username__in=lst)
+        limit = self.request.GET.get('limit')
+        if limit is None:
+            return queryset
+        self.paginator.page_size = int(self.request.GET.get('limit'))
+        return queryset
+
+
 @api_view(['POST', 'DELETE'])
 def favorite(request, recipe_id):
-    # recipe_id = kwargs['recipe_id']
     try:
         recipe = Recipe.objects.get(id=recipe_id)
     except ValueError:
@@ -196,17 +220,38 @@ def subscribe(request, author_id):
             return Response('', status=status.HTTP_400_BAD_REQUEST)
 
 
-class Subscriptions(mixins.ListModelMixin, GenericViewSet):
-    serializer_class = SubsciptionsSerializer
+@api_view(['POST', 'DELETE'])
+def is_in_shopping_cart(request, recipe_id):
+    return view_for_shopp_and_favorite(
+        RecipeInShoppingCart, request, int(recipe_id)
+    )
 
-    def get_queryset(self):
-        authors = SubscriptAuthor.objects.filter(user=self.request.user)
-        lst = []
-        for author in authors:
-            lst.append(author.author.username)
-        queryset = User.objects.filter(username__in=lst)
-        limit = self.request.GET.get('limit')
-        if limit is None:
-            return queryset
-        self.paginator.page_size = int(self.request.GET.get('limit'))
-        return queryset
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_shopping_cart(request):
+    shopp_file = open(
+        settings.MEDIA_URL + 'backend.txt', "w+", encoding="utf-8"
+    )
+    shopp = request.user.is_in_shopping_cart.all()
+    recipes = [recipe.recipe.recipe_ingredient_used.all() for recipe in shopp]
+    shop = dict()
+    for recipe in recipes:
+        ingredients_amount = [
+            [relate.ingredient, relate.amount] for relate in recipe
+        ]
+        for ingredient, amount in ingredients_amount:
+            ingredient_keys = (
+                f'{ingredient.name} {ingredient.measurement_unit}'
+            )
+            if ingredient_keys in shop.keys():
+                shop[ingredient_keys] += amount
+            else:
+                shop[ingredient_keys] = amount
+    for ingredient, amount in shop.items():
+        shopp_file.write(f'{ingredient} {amount} \n')
+    shopp_file = open(
+        settings.MEDIA_URL + 'backend.txt',
+        "rb",
+    )
+    return FileResponse(shopp_file, content_type='text/plain')

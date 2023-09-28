@@ -25,7 +25,7 @@ SECRET_KEY = (
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'food_api.apps.FoodApiConfig',
     'recipe.apps.RecipeConfig',
+    'core.apps.CoreConfig',
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',
@@ -92,13 +93,6 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', 5432),
     }
 }
-
-'''DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}'''
 
 
 # Password validation
@@ -157,3 +151,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/'
+
+handler404 = 'core.views.page_not_found'

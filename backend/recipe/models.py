@@ -8,11 +8,17 @@ class Ingredient(models.Model):
     name = models.CharField(max_length=270)
     measurement_unit = models.CharField(max_length=270)
 
+    def __str__(self):
+        return self.name
+
 
 class Tag(models.Model):
     name = models.CharField(max_length=20)
     colour = models.CharField(max_length=20)
     slug = models.SlugField()
+
+    def __str__(self):
+        return self.name
 
 
 class Recipe(models.Model):
@@ -27,6 +33,10 @@ class Recipe(models.Model):
     tags = models.ManyToManyField(Tag, related_name='recipe')
     text = models.TextField()
     cooking_time = models.IntegerField()
+    pub_day = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
 
 
 class RecipeIngredient(models.Model):
@@ -75,5 +85,21 @@ class SubscriptAuthor(models.Model):
         constraints = (
             models.UniqueConstraint(
                 fields=('user', 'author'), name='uniqe_subscript'
+            ),
+        )
+
+
+class RecipeInShoppingCart(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='is_in_shopping_cart'
+    )
+    recipe = models.ForeignKey(
+        Recipe, on_delete=models.CASCADE, related_name='is_in_shopping_cart'
+    )
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=('user', 'recipe'), name='uniqe_shopping_cart'
             ),
         )
