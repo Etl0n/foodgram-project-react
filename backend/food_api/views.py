@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import FileResponse
-from django_filters.rest_framework import DjangoFilterBackend, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from recipe.models import (
     FavoriteRecipe,
     Ingredient,
@@ -15,6 +15,7 @@ from rest_framework import filters, mixins, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
@@ -132,7 +133,7 @@ class RecipeViewSet(ModelViewSet):
     permission_classes = (OwnerOrReadOnly,)
     filter_backends = (DjangoFilterBackend, OrderingFilter)
     filterset_class = RecipeFilter
-    ordering_fields = ('pub_day',)
+    ordering = ('-pub_day',)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
