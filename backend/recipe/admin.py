@@ -103,7 +103,7 @@ class UserAdmin(admin.ModelAdmin):
     )
     list_filter = (
         'email',
-        'name',
+        'username',
     )
 
 
