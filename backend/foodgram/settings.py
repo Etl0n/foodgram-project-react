@@ -154,6 +154,6 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/'
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'backend_static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'collected_static')
 
 handler404 = 'core.views.page_not_found'
