@@ -107,11 +107,6 @@ class UserAdmin(admin.ModelAdmin):
     )
 
 
-class UserAdmin(admin.ModelAdmin):
-    list_display = ('email', 'first_name', 'last_name', 'password', 'username')
-    list_filter = ('email', 'username')
-
-
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 admin.site.register(Recipe, RecipeAdmin)
