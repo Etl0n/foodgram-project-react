@@ -180,7 +180,7 @@ class IngredientSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Количество ингредиентов должно быть положительным числом"
             )
-        super().validate(data)
+        return super().validate(data)
 
 
 class RecipeReadSerializer(serializers.ModelSerializer):
@@ -288,7 +288,10 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             del_recipe.delete()
             lst = []
             for ingredient in ingredients:
-                (current_ingredient,) = RecipeIngredient.objects.get(
+                (
+                    current_ingredient,
+                    status,
+                ) = RecipeIngredient.objects.get_or_create(
                     recipe=instance,
                     ingredient=ingredient.get('ingredient'),
                     amount=ingredient.get('amount'),
@@ -299,13 +302,13 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         if 'tags' in validate_date:
             tags = validate_date.pop('tags')
             for tag in tags:
-                (current_tag,) = Tag.objects.get(
+                current_tag = Tag.objects.get(
                     recipe=instance,
                     id=tag.id,
                 )
                 lst.append(current_tag)
             instance.tags.set(lst)
-        super().update(instance, validate_date)
+        return super().update(instance, validate_date)
 
     def to_representation(self, instance):
         context = {'request': self.context.get('request')}
@@ -322,7 +325,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Время должно быть положительным числом"
             )
-        ingredients = data['ingredients']
+        ingredients = data['recipe_ingredient_used']
         if not ingredients:
             raise serializers.ValidationError(
                 "У рецепта должены быть ингредиенты"
@@ -332,7 +335,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             if ingredient in vocabluary:
                 raise ('Ингредиенты не должны повторятся')
             vocabluary.append(ingredient)
-        super().validate(data)
+        return super().validate(data)
 
 
 class ShortInfoRecipeSerializer(serializers.ModelSerializer):
