@@ -363,7 +363,7 @@ class SubsciptionsSerializer(UserSerializer):
 
     def get_recipes(self, obj):
         limit = self.context.get('request').GET.get('recipes_limit')
-        recipes = Recipe.objects.filter(author=obj)
+        recipes = Recipe.objects.filter(author=obj).order_by('-pub_day')
         if limit is not None:
             recipes = recipes[: int(limit)]
         serializer = ShortInfoRecipeSerializer(instance=recipes, many=True)
