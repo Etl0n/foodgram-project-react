@@ -1,7 +1,6 @@
-import base64
-
 from django.contrib.auth import authenticate, get_user_model
-from django.core.files.base import ContentFile
+from django.db import transaction
+from drf_extra_fields.fields import Base64ImageField
 from recipe.models import (
     FavoriteRecipe,
     Ingredient,
@@ -17,13 +16,13 @@ from rest_framework.validators import UniqueValidator
 User = get_user_model()
 
 
-class Base64ImageField(serializers.ImageField):
+'''class Base64ImageField(serializers.ImageField):
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
             format, imgstr = data.split(';base64,')
             ext = format.split('/')[-1]
             data = ContentFile(base64.b64decode(imgstr), name=f'temp.{ext}')
-        return super().to_internal_value(data)
+        return super().to_internal_value(data)'''
 
 
 class CreateUserSerializer(serializers.ModelSerializer):
@@ -109,23 +108,20 @@ class AuthTokenSerializer(serializers.Serializer):
         email = data.get('email')
         password = data.get('password')
 
-        if email and password:
-            try:
-                authenticate(
-                    request=self.context.get('request'),
-                    email=email,
-                    password=password,
-                )
-                user_obj = User.objects.get(email=email)
-                if not user_obj.check_password(password):
-                    raise serializers.ValidationError("Incorrect credentials")
-                data['user'] = user_obj
-            except User.DoesNotExist:
-                raise serializers.ValidationError(
-                    "This email is not registered"
-                )
-        else:
+        if not (email and password):
             raise serializers.ValidationError("Missing credentials")
+        try:
+            authenticate(
+                request=self.context.get('request'),
+                email=email,
+                password=password,
+            )
+            user_obj = User.objects.get(email=email)
+            if not user_obj.check_password(password):
+                raise serializers.ValidationError("Incorrect credentials")
+            data['user'] = user_obj
+        except User.DoesNotExist:
+            raise serializers.ValidationError("This email is not registered")
         return data
 
 
@@ -178,6 +174,13 @@ class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecipeIngredient
         fields = ('id', 'amount', 'name', 'measurement_unit')
+
+    def validate(self, data):
+        if int(data['amount']) < 0:
+            raise serializers.ValidationError(
+                "Количество ингредиентов должно быть положительным числом"
+            )
+        super().validate(data)
 
 
 class RecipeReadSerializer(serializers.ModelSerializer):
@@ -237,7 +240,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
-    image = Base64ImageField(required=True, allow_null=True)
+    image = Base64ImageField(required=True)
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(),
         many=True,
@@ -262,6 +265,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             'cooking_time',
         )
 
+    @transaction.atomic
     def create(self, validate_date):
         tags = validate_date.pop('tags')
         ingredients = validate_date.pop('recipe_ingredient_used')
@@ -276,23 +280,15 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             recipe.tags.add(tag)
         return recipe
 
+    @transaction.atomic
     def update(self, instance, validate_date):
-        instance.image = validate_date.get('image', instance.image)
-        instance.name = validate_date.get('name', instance.name)
-        instance.text = validate_date.get('text', instance.text)
-        instance.cooking_time = validate_date.get(
-            'cooking_time', instance.cooking_time
-        )
         if 'recipe_ingredient_used' in validate_date:
             ingredients = validate_date.pop('recipe_ingredient_used')
             del_recipe = RecipeIngredient.objects.filter(recipe=instance)
             del_recipe.delete()
             lst = []
             for ingredient in ingredients:
-                (
-                    current_ingredient,
-                    status,
-                ) = RecipeIngredient.objects.get_or_create(
+                (current_ingredient,) = RecipeIngredient.objects.get(
                     recipe=instance,
                     ingredient=ingredient.get('ingredient'),
                     amount=ingredient.get('amount'),
@@ -303,17 +299,13 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         if 'tags' in validate_date:
             tags = validate_date.pop('tags')
             for tag in tags:
-                (
-                    current_tag,
-                    status,
-                ) = Tag.objects.get_or_create(
+                (current_tag,) = Tag.objects.get(
                     recipe=instance,
                     id=tag.id,
                 )
                 lst.append(current_tag)
             instance.tags.set(lst)
-        instance.save()
-        return instance
+        super().update(instance, validate_date)
 
     def to_representation(self, instance):
         context = {'request': self.context.get('request')}
@@ -324,6 +316,23 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             user=self.context.get('request').user, recipe=obj
         )
         return 'true'
+
+    def validate(self, data):
+        if int(data['cooking_time']) < 0:
+            raise serializers.ValidationError(
+                "Время должно быть положительным числом"
+            )
+        ingredients = data['ingredients']
+        if not ingredients:
+            raise serializers.ValidationError(
+                "У рецепта должены быть ингредиенты"
+            )
+        vocabluary = list()
+        for ingredient in ingredients:
+            if ingredient in vocabluary:
+                raise ('Ингредиенты не должны повторятся')
+            vocabluary.append(ingredient)
+        super().validate(data)
 
 
 class ShortInfoRecipeSerializer(serializers.ModelSerializer):

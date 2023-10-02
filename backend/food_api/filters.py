@@ -3,7 +3,7 @@ from recipe.models import FavoriteRecipe, Recipe
 
 
 class RecipeFilter(django_filters.FilterSet):
-    tags = django_filters.CharFilter(field_name="tags__slug")
+    tags = django_filters.CharFilter(field_name='tags__slug')
     is_favorited = django_filters.NumberFilter(
         field_name='is_favorite', method='is_favorited_recipe'
     )

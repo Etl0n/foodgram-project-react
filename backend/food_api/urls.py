@@ -18,9 +18,9 @@ from .views import (
 app_name = 'api'
 routerv1 = DefaultRouter()
 routerv1.register('recipes', RecipeViewSet, basename='recipes')
-routerv1.register('ingredients', IngredienViewSet)
-routerv1.register('tags', TagViewSet)
-routerv1.register('users', UserViewSet)
+routerv1.register('ingredients', IngredienViewSet, basename='ingredients')
+routerv1.register('tags', TagViewSet, basename='tags')
+routerv1.register('users', UserViewSet, basename='users')
 urlpatterns = [
     path('users/subscriptions/', Subscriptions.as_view({'get': 'list'})),
     path('recipes/download_shopping_cart/', download_shopping_cart),

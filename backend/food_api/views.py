@@ -20,7 +20,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from .filter import RecipeFilter
+from .filters import RecipeFilter
 from .permisions import OwnerOrReadOnly
 from .serializers import (
     AuthTokenSerializer,
@@ -34,6 +34,7 @@ from .serializers import (
     TagSerializer,
     UserSerializer,
 )
+from .utils import create_txt_with_ingredients
 
 User = get_user_model()
 
@@ -231,28 +232,9 @@ def is_in_shopping_cart(request, recipe_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def download_shopping_cart(request):
+    create_txt_with_ingredients(request)
     shopp_file = open(
-        settings.MEDIA_URL + 'backend.txt', "w+", encoding="utf-8"
-    )
-    shopp = request.user.is_in_shopping_cart.all()
-    recipes = [recipe.recipe.recipe_ingredient_used.all() for recipe in shopp]
-    shop = dict()
-    for recipe in recipes:
-        ingredients_amount = [
-            [relate.ingredient, relate.amount] for relate in recipe
-        ]
-        for ingredient, amount in ingredients_amount:
-            ingredient_keys = (
-                f'{ingredient.name} {ingredient.measurement_unit}'
-            )
-            if ingredient_keys in shop.keys():
-                shop[ingredient_keys] += amount
-            else:
-                shop[ingredient_keys] = amount
-    for ingredient, amount in shop.items():
-        shopp_file.write(f'{ingredient} {amount} \n')
-    shopp_file = open(
-        settings.MEDIA_URL + 'backend.txt',
+        f'{settings.MEDIA_URL}backend.txt',
         "rb",
     )
     return FileResponse(shopp_file, content_type='text/plain')
