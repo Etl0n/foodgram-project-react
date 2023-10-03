@@ -1,4 +1,5 @@
 # praktikum_new_diplom
-Доменное имя https://foodgramworld.ddns.net/
-Логин superuser: admin
-Пароль от admin: admin
+## Доменное имя https://foodgramworld.ddns.net/
+## Логин superuser: admin
+## Пароль от admin: admin
+## Картинки отлично загружаются на сервере просто есть проблема по нехватки памяти, поэтому я чистил volume с media файлами и поэтому картинки попропадали у рецептов. Одной я востановил дальше не стал рисковать)
