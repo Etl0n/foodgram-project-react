@@ -11,7 +11,7 @@ from recipe.models import (
     SubscriptAuthor,
     Tag,
 )
-from rest_framework import filters, mixins, status
+from rest_framework import mixins, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view, permission_classes
