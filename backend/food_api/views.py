@@ -20,7 +20,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from .filters import RecipeFilter
+from .filters import MySearchFilter, RecipeFilter
 from .permisions import OwnerOrReadOnly
 from .serializers import (
     AuthTokenSerializer,
@@ -151,8 +151,8 @@ class IngredienViewSet(
     queryset = Ingredient.objects.all()
     serializer_class = IngredientReadSerializer
     pagination_class = None
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
+    filter_backends = (MySearchFilter,)
+    search_fields = ('^name',)
     permission_classes = (AllowAny,)
 
 

@@ -323,7 +323,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if int(data['cooking_time']) < 0:
             raise serializers.ValidationError(
-                "Время должно быть положительным числом"
+                "Время должно быть положительным числом",
             )
         ingredients = data['recipe_ingredient_used']
         if not ingredients:

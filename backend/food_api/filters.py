@@ -1,5 +1,6 @@
 import django_filters
 from recipe.models import FavoriteRecipe, Recipe, RecipeInShoppingCart
+from rest_framework import filters
 
 
 def filter_by_recipe(request, queryset, name, value, use_class):
@@ -33,3 +34,7 @@ class RecipeFilter(django_filters.FilterSet):
         return filter_by_recipe(
             self.request, queryset, name, value, RecipeInShoppingCart
         )
+
+
+class MySearchFilter(filters.SearchFilter):
+    search_param = 'name'
