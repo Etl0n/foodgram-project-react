@@ -335,7 +335,12 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             if ingredient in vocabluary:
                 raise ('Ингредиенты не должны повторятся')
             vocabluary.append(ingredient)
-        return super().validate(data)
+        try:
+            return super().validate(data)
+        except BaseException:
+            raise serializers.ValidationError(
+                "Ошибка при валидации, где-то введены некоректные данные"
+            )
 
 
 class ShortInfoRecipeSerializer(serializers.ModelSerializer):

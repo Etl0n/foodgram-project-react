@@ -19,7 +19,7 @@ SECRET_KEY = (
     'django-insecure-ky&&2r9-k6&w^(jwu^4dwk!n_tm8-r!656m9dqf9j6@(uzr*9&'
 )
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'foodgramworld.ddns.net']
 
