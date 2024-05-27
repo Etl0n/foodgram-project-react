@@ -25,7 +25,8 @@
 * >docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic
 * >docker compose -f docker-compose.production.yml exec backend cp -r /app/collected_static/. /backend_static/static/
 #### После проделанной работы приложение будет доступно по ссылке (https://localhost:7000)
-### 2. Запуск прилоения на сервере(для этого на сервере уже должен быть установлен docker и nginx, прописана конфигурация файла nginx чтобы он перенаправлял все запросы приходящие на сервер(proxy_pass http://127.0.0.1:7000)):
+### 2. Запуск прилоения на сервере
+#### (для этого на сервере уже должен быть установлен docker и nginx, прописана конфигурация файла nginx чтобы он перенаправлял все запросы приходящие на сервер(proxy_pass http://127.0.0.1:7000)):
 #### Форкнуть репозиторий себе в GitHub:
 > Для этого найдите кнопку Fork немного выше и правее центра экрана
 #### Склонировать форкнутый репозиторий себе на компьютер:
